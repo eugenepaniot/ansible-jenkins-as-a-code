@@ -1,0 +1,33 @@
+---
+- name: Handler Reload JcasC | Reload Jenkin configuration programatically
+  block:
+    - set_fact:
+        __exec_script_dir: >-
+          {%- set dir = lookup('env','WORKSPACE') -%}
+          {%- if dir == "" -%}{%- set dir = "/tmp/" + lookup('password', '/dev/null length=6 chars=ascii_letters') -%}{%- endif -%}
+          {{ dir }}/execute/
+
+    - name: Handler Reload JcasC | Create execute directory
+      file:
+        path: "{{ __exec_script_dir }}"
+        state: directory
+        owner: "{{ jenkins_process_user }}"
+        group: "{{ jenkins_process_group }}"
+        mode: 0750
+
+    - name: Handler Reload JcasC | Create execute/script.groovy
+      blockinfile:
+        path: "{{ __exec_script_dir }}/script.groovy"
+        block: |
+          import io.jenkins.plugins.casc.ConfigurationAsCode;
+          ConfigurationAsCode.get().configure()
+        marker: '// {mark} ANSIBLE MANAGED BLOCK'
+        create: yes
+        owner: "{{ jenkins_process_user }}"
+        group: "{{ jenkins_process_group }}"
+        mode: 0640
+        force: yes
+        backup: no
+  when: >
+    not ansible_check_mode or
+    (skip_handlers | default("false") == "true")

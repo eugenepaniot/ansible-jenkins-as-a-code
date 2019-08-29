@@ -1,0 +1,86 @@
+---
+- name: Install | Define jenkins_pkg_url
+  set_fact:
+    jenkins_pkg_url: "{{ __jenkins_pkg_url }}"
+  when: jenkins_pkg_url is not defined
+  tags:
+    - install
+
+- name: Install | Get installed jenkins version
+  check_mode: no
+  shell: rpm -q --queryformat "%{VERSION}" jenkins
+  register: _jenkins_installed_version
+  ignore_errors: true
+  changed_when: False
+  tags:
+    - install
+
+- name: Install | Download specific Jenkins version
+  get_url:
+    url: "{{ jenkins_pkg_url }}/jenkins-{{ jenkins_version }}-1.1.noarch.rpm"
+    dest: "/tmp/jenkins-{{ jenkins_version }}-1.1.noarch.rpm"
+  when: >
+    not ansible_check_mode and
+    jenkins_version is defined and
+    _jenkins_installed_version is defined and
+    _jenkins_installed_version.stdout != jenkins_version
+  tags:
+    - install
+
+- name: Install | Check if we downloaded a specific version of Jenkins.
+  stat:
+    path: "/tmp/jenkins-{{ jenkins_version }}-1.1.noarch.rpm"
+  register: specific_version
+  when: >
+    not ansible_check_mode and
+    jenkins_version is defined and
+    _jenkins_installed_version.stdout != jenkins_version
+  tags:
+    - install
+
+- name: Install | Install our specific version of Jenkins.
+  package:
+    name: "/tmp/jenkins-{{ jenkins_version }}-1.1.noarch.rpm"
+    state: present
+  register: _jenkins_rpm_installed
+  until: _jenkins_rpm_installed is success
+  retries: "{{ jenkins_connection_retries }}"
+  delay: "{{ jenkins_connection_delay }}"
+  when: >
+    not ansible_check_mode and
+    jenkins_version is defined and
+    specific_version is defined and 'stat' in specific_version and specific_version.stat.exists
+  notify: restart jenkins
+  tags:
+    - install
+
+- name: Install | Install python pip modules
+  check_mode: no
+  pip:
+    name: ['dpath']
+  tags:
+    - install
+
+- name: Install | Ensure Jenkins is installed.
+  package:
+    name: jenkins
+    state: present
+  tags:
+    - always
+
+- name: Install | Ensure needed directories exists
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0750
+    follow: true
+  with_items:
+    - "{{ jenkins_home }}"
+    - "{{ jenkins_casc_config_path }}"
+    - "{{ jenkins_home }}/init.groovy.d"
+  when: not ansible_check_mode
+  tags:
+    - install
+    - settings

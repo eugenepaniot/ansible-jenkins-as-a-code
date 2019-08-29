@@ -1,0 +1,17 @@
+---
+jenkins:
+  authorizationStrategy:
+    roleBased:
+      roles:
+        agents:
+        - name: "slaveRole"
+          pattern: ".*-slave"
+          permissions:
+          - "Agent/Provision"
+          - "Credentials/Delete"
+          - "Credentials/Create"
+          - "Gerrit/ManualTrigger"
+          - "Agent/Configure"
+          - "Agent/Connect"
+          - "Agent/Delete"
+          - "Agent/Disconnect"

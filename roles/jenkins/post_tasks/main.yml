@@ -1,0 +1,16 @@
+---
+- name: Post tasks | Ensure Jenkins is working
+  check_mode: no
+  uri:
+    url: https://{{ jenkins_hostname }}:{{ jenkins_https_port }}{{ jenkins_url_prefix }}/
+    status_code: 200
+    timeout: 5
+    validate_certs: no
+    force: yes
+  no_log: true
+  register: result
+  retries: "{{ jenkins_connection_retries }}"
+  delay: "{{ jenkins_connection_delay }}"
+  until: >
+     'status' in result and
+     result['status'] == 200

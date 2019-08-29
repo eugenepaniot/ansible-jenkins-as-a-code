@@ -1,0 +1,41 @@
+---
+- name: Handler Restart Jenkins | Restart Jenkin service
+  no_log: True
+  service: name=jenkins state=restarted
+  when: >
+    not ansible_check_mode and
+    (skip_handlers | default("true") == "false")
+
+
+- name: Handler Restart Jenkins | Restart Jenkin programatically
+  block:
+    - set_fact:
+        __exec_script_dir: >-
+          {%- set dir = lookup('env','WORKSPACE') -%}
+          {%- if dir == "" -%}{%- set dir = "/tmp/" + lookup('password', '/dev/null length=6 chars=ascii_letters') -%}{%- endif -%}
+          {{ dir }}/execute/
+
+    - name: Handler Restart Jenkins | Create execute directory
+      file:
+        path: "{{ __exec_script_dir }}"
+        state: directory
+        owner: "{{ jenkins_process_user }}"
+        group: "{{ jenkins_process_group }}"
+        mode: 0750
+
+    - name: Handler Restart Jenkins | Create execute/script.groovy
+      blockinfile:
+        path: "{{ __exec_script_dir }}/script.groovy"
+        block: |
+          import jenkins.model.*
+          Jenkins.instance.doSafeRestart(null);
+        marker: '// {mark} ANSIBLE MANAGED BLOCK'
+        create: yes
+        owner: "{{ jenkins_process_user }}"
+        group: "{{ jenkins_process_group }}"
+        mode: 0640
+        force: yes
+        backup: no
+  when: >
+    not ansible_check_mode or
+    (skip_handlers | default("false") == "true")

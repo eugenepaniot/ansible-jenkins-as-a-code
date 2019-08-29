@@ -1,0 +1,16 @@
+---
+- include_tasks: install.yml
+  tags:
+    - always
+
+- include_tasks: system.yml
+  tags:
+    - always
+
+- include_tasks: settings.yml
+  tags:
+    - always
+
+- include: ssl.yml
+  tags:
+    - always

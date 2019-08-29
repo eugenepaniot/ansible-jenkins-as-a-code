@@ -1,0 +1,113 @@
+---
+- name: "Plugins | Copy scripts"
+  copy:
+    src: "{{ item }}"
+    dest: /usr/local/bin/
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0755
+  when: not ansible_check_mode
+  with_items:
+    - scripts/plugins/install-plugins.sh
+    - scripts/plugins/jenkins-support
+  tags:
+    - plugins
+    - plugins_install
+
+- name: Plugins | Define jenkins_plugins with global plugins
+  no_log: True
+  check_mode: no
+  set_fact:
+    __jenkins_plugins: "{{ _jenkins_global_plugins | combine(jenkins_plugins) }}"
+  tags:
+    - always
+
+- name: Plugins | Debug jenkins_plugins
+  check_mode: no
+  debug:
+    msg: "{{ __jenkins_plugins }}"
+    verbosity: 3
+  tags:
+    - plugins
+    - plugins_install
+
+- name: Plugins | Read installed_plugins.json
+  check_mode: no
+  no_log: True
+  slurp:
+    src: "{{ jenkins_home }}/userContent/installed_plugins.json"
+  ignore_errors: True
+  register: __installed_plugins_content
+  tags:
+    - plugins
+    - plugins_install
+
+- name: Plugins | Propagate installed_plugins
+  no_log: True
+  set_fact:
+    __installed_plugins: >-
+      {%- if not __installed_plugins_content.failed -%}
+      {{ __installed_plugins_content['content'] | b64decode | from_json }}
+      {%- else -%}
+      {{ dict() }}
+      {%- endif -%}
+  tags:
+    - plugins
+    - plugins_install
+
+- name: Plugins | Define difference between jenkins_plugins and installed_plugins
+  check_mode: no
+  shell: |-
+    python -c "
+    needed = {{ __jenkins_plugins }}
+    installed = {{ __installed_plugins }}
+    diff = { k : needed[k] for k, _ in set(needed.items()) - set(installed.items())}
+    print(' '.join('{}:{}'.format(k, v) for k, v in diff.items()))
+    "
+  changed_when: False
+  register: __jenkins_plugins_diff
+  tags:
+    - plugins_install
+    - plugins
+
+- name: Plugins | Install plugins
+  environment:
+    JENKINS_UC: "{{ jenkins_updates_url }}"
+    CURL_OPTIONS: "-sSfLk"
+    CURL_RETRY: "{{ jenkins_connection_retries }}"
+    CURL_RETRY_DELAY: "{{ jenkins_connection_delay }}"
+    CURL_CONNECTION_TIMEOUT: "{{ jenkins_connection_timeout }}"
+    REF: "{{ jenkins_home }}"
+    JENKINS_WAR: /usr/lib/jenkins/jenkins.war
+  shell: |-
+    /usr/local/bin/install-plugins.sh {{ __jenkins_plugins_diff.stdout }}
+  when: >
+    not ansible_check_mode and
+    __jenkins_plugins_diff and __jenkins_plugins_diff.stdout
+  register: result
+  failed_when: >
+    result.rc > 0 or 'Failed' in result.stderr_lines
+  notify: restart jenkins
+  tags:
+    - plugins_install
+
+- include_tasks: "{{ item }}"
+  with_list: '{{ lookup("fileglob", "../tasks/01-plugins/plugin-*.yml").split(",") | sort }}'
+  tags:
+    - always
+
+- include_tasks: copy-groovy-scripts.yml
+  vars:
+    script_template: "02"
+  tags:
+    - settings
+    - plugins
+    - plugins_install
+
+- include_tasks: copy-jcasc.yml
+  vars:
+    script_template: "02"
+  tags:
+    - settings
+    - plugins
+    - plugins_install

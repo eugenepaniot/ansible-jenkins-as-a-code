@@ -1,0 +1,84 @@
+---
+- name: SSL | Check if SSL keytool file exists
+  check_mode: no
+  stat:
+    path: "{{ jenkins_keystore_location }}"
+  register: ssl_keytool
+  tags:
+    - ssl
+
+- name: SSL | Generate SSL keytool
+  vars:
+    __ips: |-
+      {% set __ips=[] %}
+      {% for ip in ansible_all_ipv4_addresses %}
+      {% if __ips.insert(loop.index, 'ip:'+ip) %}{% endif %}
+      {% endfor %}
+      {{ __ips | join(',') }}
+
+    __dns: |-
+      {% set __dns=[] %}
+      {% if __dns.insert(0, 'dns:'+ansible_hostname) %}{% endif %}
+      {% if __dns.insert(1, 'dns:'+ansible_fqdn) %}{% endif %}
+      {{ __dns | join(',') }}
+
+  shell: |-
+    keytool -genkey -noprompt -trustcacerts -keysize 2048 -validity 999 \
+        -keyalg RSA \
+        -keypass {{ jenkins_keystore_password }} \
+        -dname "CN=jenkins-server" \
+        -ext san="ip:127.0.0.1,ip:::1,{{ __ips }},dns:localhost,{{ __dns }}" \
+        -alias jenkins-server \
+        -keystore {{ jenkins_keystore_location }} \
+       -storepass {{ jenkins_keystore_password }} 2>&1 \
+        && \
+    echo {{ jenkins_keystore_password }} | keytool -importkeystore \
+       -srckeystore {{ jenkins_keystore_location }} \
+       -destkeystore {{ jenkins_keystore_location }} \
+       -deststoretype pkcs12 2>&1
+  when: >
+    not ansible_check_mode and
+    ssl_keytool.stat.exists == False
+  notify: restart jenkins
+  tags:
+    - ssl
+
+- name: SSL | Chown SSL keytool
+  file:
+    path: "{{ jenkins_keystore_location }}"
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: '0640'
+  when: not ansible_check_mode
+  tags:
+    - ssl
+
+- name: SSL | Set Jenkins JENKINS_HTTPS_PORT
+  lineinfile:
+    dest: "{{ jenkins_init_file }}"
+    regexp: '^JENKINS_HTTPS_PORT=.*'
+    line: "JENKINS_HTTPS_PORT={{ jenkins_https_port }}"
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - ssl
+
+- name: SSL | Set Jenkins JENKINS_HTTPS_KEYSTORE
+  lineinfile:
+    dest: "{{ jenkins_init_file }}"
+    regexp: '^JENKINS_HTTPS_KEYSTORE=.*'
+    line: "JENKINS_HTTPS_KEYSTORE={{ jenkins_keystore_location }}"
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - ssl
+
+- name: SSL | Set Jenkins JENKINS_HTTPS_KEYSTORE_PASSWORD
+  lineinfile:
+    dest: "{{ jenkins_init_file }}"
+    regexp: '^JENKINS_HTTPS_KEYSTORE_PASSWORD=.*'
+    line: 'JENKINS_HTTPS_KEYSTORE_PASSWORD="{{ jenkins_keystore_password }}"'
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - ssl

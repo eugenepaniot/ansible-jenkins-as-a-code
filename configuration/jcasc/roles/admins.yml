@@ -1,0 +1,12 @@
+---
+jenkins:
+  authorizationStrategy:
+    roleBased:
+      roles:
+        global:
+        - name: "adminGlobalRole"
+          assignments:
+            - admin
+          pattern: ".*"
+          permissions:
+          - "Overall/Administer"

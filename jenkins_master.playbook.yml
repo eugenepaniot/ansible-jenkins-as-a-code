@@ -1,0 +1,36 @@
+---
+- name: Setup facts
+  hosts: all
+  gather_facts: False
+  no_log: True
+  tasks:
+    - name: Update facts
+      setup:
+        gather_subset: "!all,hardware,virtual,network"
+      when: >
+        hostvars[item]["ansible_default_ipv4"] is not defined
+      with_items: '{{groups["all"]}}'
+      tags:
+        - always
+
+
+- name: Install and Configure Jenkins
+  hosts: gcp_type_jenkins_master
+  gather_facts: True
+  no_log: False
+  become: True
+
+  pre_tasks:
+    - name: Include all vars files
+      include_vars:
+        dir: configuration/vars
+        extensions:
+          - yml
+          - yaml
+      tags:
+        - always
+
+  roles:
+    - role: jenkins
+  post_tasks:
+    - include_tasks: roles/jenkins/post_tasks/main.yml

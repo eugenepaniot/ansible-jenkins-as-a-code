@@ -1,0 +1,15 @@
+---
+jenkins:
+  authorizationStrategy:
+    roleBased:
+      roles:
+        items:
+        - name: "prRole"
+          pattern: ".*-QWE"
+          permissions:
+          - "Job/Build"
+          - "Credentials/Create"
+          - "Gerrit/ManualTrigger"
+          - "Credentials/View"
+          - "Credentials/Update"
+          - "Gerrit/Retrigger"

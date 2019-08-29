@@ -1,0 +1,36 @@
+---
+- name: Copy jcasc | Ensure script_template is defined
+  check_mode: no
+  no_log: true
+  assert:
+    that: script_template is defined
+  tags:
+    - always
+
+- name: "Copy jcasc | {{ script_template }} | Copy jcasc"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ jenkins_casc_config_path }}"
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0644
+  with_fileglob:
+    - "jcasc/{{ script_template }}-*.yml"
+  notify: reload jcasc
+  when: not ansible_check_mode
+  tags:
+    - always
+
+- name: "Copy jcasc | {{ script_template }} | Copy jcasc template scripts"
+  template:
+    src: "{{ item }}"
+    dest: "{{ jenkins_home }}/jcasc/{{ item | basename | regex_replace('\\.j2','') }}"
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0644
+  with_fileglob:
+    - "../templates/jcasc/{{ script_template }}-*.yml.j2"
+  notify: reload jcasc
+  when: not ansible_check_mode
+  tags:
+    - always

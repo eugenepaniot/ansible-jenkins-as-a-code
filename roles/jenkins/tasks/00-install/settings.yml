@@ -1,0 +1,56 @@
+---
+- name: Settings | Ensure jenkins init file exists.
+  file:
+    path: "{{ jenkins_init_file }}"
+    state: touch
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+  changed_when: False
+  when: not ansible_check_mode
+  tags:
+    - settings
+
+- name: Settings | Replace variables in init file
+  lineinfile:
+    dest: "{{ jenkins_init_file }}"
+    insertafter: '^{{ item.option }}='
+    regexp: '^{{ item.option }}=.*'
+    line: '{{ item.option }}="{{ item.value }}"'
+    state: present
+  with_items: "{{ jenkins_init_changes }}"
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - settings
+
+- name: "Settings | Copy logging configuration"
+  copy:
+    src: "etc/logging.properties"
+    dest: "{{ jenkins_home }}/logging.properties"
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0640
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - settings
+
+- include_tasks: copy-groovy-scripts.yml
+  vars:
+    script_template: "00"
+  tags:
+    - settings
+
+# - name: Settings | Recursively change ownership of a directory
+#   file:
+#     path: "{{ item }}"
+#     state: directory
+#     recurse: yes
+#     owner: "{{ jenkins_process_user }}"
+#     group: "{{ jenkins_process_group }}"
+#   with_items:
+#     - /var/cache/jenkins/
+#     - /var/log/jenkins/
+#     - "{{ jenkins_home }}"
+#   tags:
+#     - settings

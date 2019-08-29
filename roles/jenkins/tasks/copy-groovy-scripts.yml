@@ -1,0 +1,36 @@
+---
+- name: Copy groovy scripts | Ensure script_template is defined
+  check_mode: no
+  no_log: true
+  assert:
+    that: script_template is defined
+  tags:
+    - always
+
+- name: "Copy groovy scripts | {{ script_template }} | Copy groovy scripts"
+  copy:
+    src: "{{ item }}"
+    dest: "{{ jenkins_home }}/init.groovy.d/"
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0644
+  with_fileglob:
+    - "init.groovy.d/{{ script_template }}-*"
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - always
+
+- name: "Copy groovy scripts | {{ script_template }} | Copy groovy template scripts"
+  template:
+    src: "{{ item }}"
+    dest: "{{ jenkins_home }}/init.groovy.d/{{ item | basename | regex_replace('\\.j2','') }}"
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+    mode: 0644
+  with_fileglob:
+    - "../templates/init.groovy.d/{{ script_template }}-*.j2"
+  notify: restart jenkins
+  when: not ansible_check_mode
+  tags:
+    - always

@@ -1,0 +1,6 @@
+---
+- name: restart jenkins
+  include_tasks: ../handlers/restart-jenkins.yml
+
+- name: reload jcasc
+  include_tasks: ../handlers/restart-jcasc.yml

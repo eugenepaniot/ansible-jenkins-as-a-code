@@ -1,0 +1,15 @@
+HashKnownHosts no
+GSSAPIAuthentication no
+ForwardX11 no
+PreferredAuthentications publickey,password,keyboard-interactive
+StrictHostKeyChecking no
+UserKnownHostsFile /dev/null
+SendEnv TMOUT
+
+HostKeyAlgorithms ssh-ed25519,ecdsa-sha2-nistp256,ecdsa-sha2-nistp384,ecdsa-sha2-nistp521,ssh-rsa,ssh-dss
+
+Compression yes
+
+TCPKeepAlive yes
+ServerAliveInterval 30
+ServerAliveCountMax 10

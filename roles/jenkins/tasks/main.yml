@@ -1,0 +1,12 @@
+---
+- include_tasks: 00-install/main.yml
+  tags:
+    - always
+
+- include_tasks: 01-plugins/main.yml
+  tags:
+    - always
+
+- include_tasks: 02-jcasc/main.yml
+  tags:
+    - always
