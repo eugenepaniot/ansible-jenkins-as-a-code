@@ -27,7 +27,7 @@
     dest: "{{ jenkins_home }}/jcasc/{{ item | basename | regex_replace('\\.j2','') }}"
     owner: "{{ jenkins_process_user }}"
     group: "{{ jenkins_process_group }}"
-    mode: 0644
+    mode: 0440
   with_fileglob:
     - "../templates/jcasc/{{ script_template }}-*.yml.j2"
   notify: reload jcasc

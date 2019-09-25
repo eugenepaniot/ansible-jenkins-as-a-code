@@ -1,4 +1,9 @@
 ---
+- name: Post tasks | Ensure Jenkin service started
+  no_log: True
+  service: name=jenkins state=started enabled=yes
+  when: not ansible_check_mode
+
 - name: Post tasks | Ensure Jenkins is working
   check_mode: no
   uri:

@@ -1,4 +1,30 @@
 ---
+- name: JCasC | Find jenkins global defined configuration files
+  no_log: True
+  set_fact:
+    __jenkins_casc_global_configs: "{{ (__jenkins_casc_global_configs|default([])) + [item.path] }}"
+  with_filetree: "{{ jenkins_casc_global_config_path }}"
+  when:
+    - item.state == "file"
+    - item.path is match(jenkins_casc_config_files_match)
+  tags:
+    - settings
+    - jcasc
+    - plugins
+
+- name: JCasC | Include global defined configuration files as jcasc variable in sorted way
+  no_log: True
+  include_vars:
+    name: "{{ '%04d' | format(index+1000|int) }}__{{ item | replace('/', '_') }}_jcasc"
+    file: "{{ jenkins_casc_global_config_path }}/{{ item }}"
+  loop: "{{ __jenkins_casc_global_configs | default([]) | sort }}"
+  loop_control:
+    index_var: index
+  tags:
+    - settings
+    - jcasc
+    - plugins
+
 - name: JCasC | Find jenkins user defined configuration files
   no_log: True
   set_fact:
@@ -6,7 +32,7 @@
   with_filetree: "{{ jenkins_casc_user_config_path }}"
   when:
     - item.state == "file"
-    - item.path is match(jenkins_casc_user_config_files_match)
+    - item.path is match(jenkins_casc_config_files_match)
   tags:
     - settings
     - jcasc
@@ -15,9 +41,9 @@
 - name: JCasC | Include user defined configuration files as jcasc variable in sorted way
   no_log: True
   include_vars:
-    name: "{{ '%03d' | format(index+100|int) }}__{{ item | replace('/', '_') }}_jcasc"
+    name: "{{ '%04d' | format(index+2000|int) }}__{{ item | replace('/', '_') }}_jcasc"
     file: "{{ jenkins_casc_user_config_path }}/{{ item }}"
-  loop: "{{ __jenkins_casc_user_configs | default([]) | sort }}"
+  loop: "{{  __jenkins_casc_user_configs | default([]) | sort }}"
   loop_control:
     index_var: index
   tags:
@@ -26,26 +52,27 @@
     - plugins
 
 - name: JCasC | Merge user defined jcasc variables
-  merge_vars:
-    suffix_to_merge: jcasc
-    merged_var_name: jenkins_configuration
-    additional_merge_tree:
-      - jenkins/globalNodeProperties
-      # TODO: need to implement merge by specified key in list of dicts
-      # - jenkins/authorizationStrategy/roleBased/roles/agents
-      # - jenkins/authorizationStrategy/roleBased/roles/global
-      # - jenkins/authorizationStrategy/roleBased/roles/items
-    changed_when: True
+  no_log: True
+  block:
+    - set_fact:
+        mask_passwords: "{{ mask_passwords }}"
+
+    - merge_vars:
+        suffix_to_merge: jcasc
+        merged_var_name: jenkins_configuration
+        additional_merge_tree:
+          - jenkins/globalNodeProperties
+          # TODO IMPROVEMENT: implement merge by specified key in list of dicts
+          # - jenkins/authorizationStrategy/roleBased/roles/agents
+          # - jenkins/authorizationStrategy/roleBased/roles/global
+          # - jenkins/authorizationStrategy/roleBased/roles/items
+
+    - set_fact: # WA for https://github.com/ansible/ansible/issues/24425
+        jenkins_configuration: "{{ jenkins_configuration }}"
   tags:
     - settings
     - jcasc
     - plugins
-
-# - fail:
-#     msg: "{{ jenkins_configuration | to_nice_yaml(indent=2) }}"
-#   tags:
-#     - settings
-#     - jcasc
 
 - include_tasks: copy-jcasc.yml
   vars:
@@ -54,3 +81,18 @@
     - settings
     - jcasc
     - plugins
+
+- include_tasks: copy-groovy-scripts.yml
+  vars:
+    script_template: "01"
+  tags:
+    - settings
+    - jcasc
+    - plugins
+
+# - fail:
+#     msg: "{{ jenkins_configuration }}"
+#   tags:
+#     - settings
+#     - jcasc
+#     - plugins

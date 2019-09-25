@@ -1,38 +1,38 @@
----
-- name: System | Clear custom attributes for sudo file
-  file:
-    path: /etc/sudoers.d/jenkins
-    owner: root
-    group: root
-    mode: 0400
-    attr: ''
-  ignore_errors: true
-  when: not ansible_check_mode
-  tags:
-    - system
-    - settings
-
-- name: System | Enable sudo access for jenkins user
-  copy:
-    content: |-
-      Defaults>{{ jenkins_process_user }} !requiretty
-      {{ jenkins_process_user }} ALL=(ALL) NOPASSWD: ALL
-    dest: /etc/sudoers.d/jenkins
-    force: yes
-    backup: no
-  when: not ansible_check_mode
-  tags:
-    - system
-    - settings
-
-- name: System | Set custom attributes for sudo file
-  file:
-    path: /etc/sudoers.d/jenkins
-    owner: root
-    group: root
-    mode: 0400
-    attr: i
-  when: not ansible_check_mode
-  tags:
-    - system
-    - settings
+# ---
+# - name: System | Clear custom attributes for sudo file
+#   file:
+#     path: /etc/sudoers.d/jenkins
+#     owner: root
+#     group: root
+#     mode: 0400
+#     attr: ''
+#   ignore_errors: true
+#   when: not ansible_check_mode
+#   tags:
+#     - system
+#     - settings
+#
+# - name: System | Enable sudo access for jenkins user
+#   copy:
+#     content: |-
+#       Defaults>{{ jenkins_process_user }} !requiretty
+#       {{ jenkins_process_user }} ALL=(ALL) NOPASSWD: ALL
+#     dest: /etc/sudoers.d/jenkins
+#     force: yes
+#     backup: no
+#   when: not ansible_check_mode
+#   tags:
+#     - system
+#     - settings
+#
+# - name: System | Set custom attributes for sudo file
+#   file:
+#     path: /etc/sudoers.d/jenkins
+#     owner: root
+#     group: root
+#     mode: 0400
+#     attr: i
+#   when: not ansible_check_mode
+#   tags:
+#     - system
+#     - settings

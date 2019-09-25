@@ -1,0 +1,51 @@
+---
+- assert:
+    that:
+      - jenkins_rebuild_war
+
+- name: Rebuild WAR | Create temporary build directory
+  tempfile:
+    state: directory
+    suffix: jenkins-war
+  register: tmpdir
+  when: not ansible_check_mode
+  tags:
+    - rebuild-war
+    - install
+    - plugins_install
+
+- name: Rebuild WAR | Unzip jenikins war into temp directory
+  no_log: True
+  shell: |-
+    unzip {{ __jenkins_war }} -d {{ tmpdir.path }}
+  when: not ansible_check_mode
+  tags:
+    - rebuild-war
+    - install
+    - plugins_install
+
+- name: "Rebuild WAR | Copy files into jenkins bundle"
+  block:
+    - file:
+        path: "{{ tmpdir.path }}/WEB-INF/plugins/"
+        owner: "{{ jenkins_process_user }}"
+        group: "{{ jenkins_process_group }}"
+        state: directory
+        mode: '0755'
+
+    - shell: "cp -pv {{ __jenkins_plugins_base_dir }}/plugins/*.jpi {{ tmpdir.path }}/WEB-INF/plugins/"
+      no_log: True
+  tags:
+    - rebuild-war
+    - install
+    - plugins_install
+
+- name: "Rebuild WAR | Create jenkins.war zip archive"
+  no_log: True
+  shell: |-
+    cd {{ tmpdir.path }} && \
+    zip "{{ __jenkins_war }}" -r .
+  tags:
+    - rebuild-war
+    - install
+    - plugins_install

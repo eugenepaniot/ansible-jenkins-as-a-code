@@ -1,4 +1,10 @@
 ---
+- set_fact:
+    __jenkins_war: "/usr/lib/jenkins/jenkins.war"
+    __jenkins_plugins_base_dir: "{{ jenkins_home }}"
+  tags:
+    - always
+
 - name: "Plugins | Copy scripts"
   copy:
     src: "{{ item }}"
@@ -11,14 +17,13 @@
     - scripts/plugins/install-plugins.sh
     - scripts/plugins/jenkins-support
   tags:
-    - plugins
-    - plugins_install
+    - install
 
 - name: Plugins | Define jenkins_plugins with global plugins
   no_log: True
   check_mode: no
   set_fact:
-    __jenkins_plugins: "{{ _jenkins_global_plugins | combine(jenkins_plugins) }}"
+    __jenkins_plugins: "{{ _jenkins_global_plugins | combine(jenkins_global_plugins) | combine(jenkins_plugins) }}"
   tags:
     - always
 
@@ -56,6 +61,7 @@
     - plugins_install
 
 - name: Plugins | Define difference between jenkins_plugins and installed_plugins
+  no_log: True
   check_mode: no
   shell: |-
     python -c "
@@ -77,9 +83,10 @@
     CURL_RETRY: "{{ jenkins_connection_retries }}"
     CURL_RETRY_DELAY: "{{ jenkins_connection_delay }}"
     CURL_CONNECTION_TIMEOUT: "{{ jenkins_connection_timeout }}"
-    REF: "{{ jenkins_home }}"
-    JENKINS_WAR: /usr/lib/jenkins/jenkins.war
+    REF: "{{ __jenkins_plugins_base_dir }}"
+    JENKINS_WAR: "{{ __jenkins_war }}"
   shell: |-
+    rm -Rf ${REF}/plugins/*.lock
     /usr/local/bin/install-plugins.sh {{ __jenkins_plugins_diff.stdout }}
   when: >
     not ansible_check_mode and
@@ -111,3 +118,10 @@
     - settings
     - plugins
     - plugins_install
+
+
+- include_tasks: "rebuild-war.yml"
+  when:
+    - jenkins_rebuild_war
+  tags:
+    - always

@@ -1,14 +1,23 @@
 ---
-_jenkins_global_configuration:
+mask_passwords:
+  password_pair: {}
+  mask_regex:
+    - .*password.*
+    - .*passwd.*
+
+000__jenkins_global_configuration_jcasc:
   jenkins:
     systemMessage: |-
-      <h2>Welcome to our build server. </h2>
-      <h3>This Jenkins is 100% configured and managed 'as code'.</h3>
-
-      <p><i>Config is now mostly handled by the 'Jenkins Configuration as Code' (JCasC) plugin.
-      JCasC config can be found in the 01-jenkins.yaml file in the {{ jenkins_casc_config_path }} folder.</i></p>
-
-    labelString: "jenkins-master {{ jenkins_hostname }} {{ inventory_hostname }}"
+      <div>
+          <img style="float: left; margin: 0px 15px 15px 0px;" src="https://jenkins.io/images/logos/JCasC/JCasC.svg" width="100" alt="JCasC">
+        	<h2>Welcome to our build server. </h2>
+        	<h3>This Jenkins is 100% configured and managed 'as code'.</h3>
+          <p>
+            <i>Config is now mostly handled by the 'Jenkins Configuration as Code' (JCasC) plugin. <br/>
+            JCasC config can be found in the <b>01-jenkins.yaml</b> file in the <b>{{ jenkins_casc_config_path }}</b> folder.</i>
+        	</p>
+      </div>
+    labelString: "jenkins-master {{ jenkins_hostname }} {{ ansible_hostname }}"
     agentProtocols:
       - "JNLP4-connect"
       - "Ping"
@@ -27,6 +36,7 @@ _jenkins_global_configuration:
         env:
           - key: "PYTHONUNBUFFERED"
             value: "1"
+
           - key: "HTTP_PROXY"
             value: |-
               {%- if jenkins_proxy_host and jenkins_proxy_port -%}
@@ -36,18 +46,28 @@ _jenkins_global_configuration:
                   http://{{ jenkins_proxy_host }}:{{ jenkins_proxy_port }}
                 {%- endif -%}
               {%- endif -%}
+
           - key: "HTTPS_PROXY"
             value: "^${HTTP_PROXY}"
+
           - key: "NO_PROXY"
             value: |-
               {%- if jenkins_proxy_host and jenkins_proxy_port -%}
                 {{ jenkins_proxy_exceptions | replace(' ', ',') }}
               {%- endif -%}
-    quietPeriod: 10
-    scmCheckoutRetryCount: 15
+
+    quietPeriod: 5
+    scmCheckoutRetryCount: 60
     remotingSecurity:
       enabled: true
     slaveAgentPort: 0
+
+    # securityRealm:
+    #   local:
+    #     allowsSignup: false
+    #     users:
+    #      - id: admin
+    #        password: admin
 
     proxy:
       name: "{{ jenkins_proxy_host }}"
@@ -111,14 +131,17 @@ _jenkins_global_configuration:
       elapsedTimeFormat: "'<b>'HH:mm:ss.S'</b> '"
       systemTimeFormat: "'<b>'HH:mm:ss'</b> '"
 
-
-000__jenkins_global_configuration_jcasc: "{{ _jenkins_global_configuration }}" # hack to put global config to the top of var list
-
 001__jenkins_global_configuration_installed_plugins_jcasc:
   groovy:
     - script: |
         import jenkins.model.*
         import groovy.json.JsonOutput
+
+        def folder = new File('{{ jenkins_home }}/userContent/')
+
+        if( !folder.exists() ) {
+          folder.mkdirs()
+        }
 
         File file = new File("{{ jenkins_home }}/userContent/installed_plugins.json")
 
@@ -152,7 +175,8 @@ _jenkins_global_configuration:
           'hudson.model.UpdateCenter$CoreUpdateMonitor',
           "hudson.diagnosis.ReverseProxySetupMonitor",
           "jenkins.security.UpdateSiteWarningsMonitor",
-          "hudson.diagnosis.OldDataMonitor"
+          "hudson.diagnosis.OldDataMonitor",
+          "OldData"
         ]
         ) {
           def mon = instance.getAdministrativeMonitor(m)
@@ -219,3 +243,41 @@ _jenkins_global_configuration:
         authenticators.add(new ProjectQueueItemAuthenticator(strategyMap))
 
         instance.save()
+
+001__jenkins_global_configuration_mask_passwords_jcasc:
+  groovy:
+    - script: |
+        import com.michelin.cio.hudson.plugins.maskpasswords.MaskPasswordsConfig
+        import com.michelin.cio.hudson.plugins.maskpasswords.MaskPasswordsBuildWrapper
+        import groovy.json.JsonSlurper
+
+        MaskPasswordsConfig plugin = new MaskPasswordsConfig().getInstance()
+        def cfg = new JsonSlurper().parseText('{{ mask_passwords | to_json }}')
+
+        plugin.clear()
+
+        cfg.password_pair.each { entry ->
+          plugin.addGlobalVarPasswordPair(new MaskPasswordsBuildWrapper.VarPasswordPair(
+            entry.key, entry.value
+          ))
+        }
+
+        cfg.mask_regex.each { entry ->
+          plugin.addGlobalVarMaskRegex(new MaskPasswordsBuildWrapper.VarMaskRegex(entry))
+        }
+
+        plugin.save(plugin)
+
+        println("Configure Mask Passwords plugin")
+
+001__jenkins_global_configuration_locale_jcasc:
+  groovy:
+    - script: |
+        import hudson.plugins.locale.*
+        import jenkins.model.*
+
+        PluginImpl plugin = (PluginImpl) Jenkins.getActiveInstance().getPlugin("locale")
+        if (plugin) {
+          plugin.setSystemLocale("en_US")
+          println("Set locale")
+        }

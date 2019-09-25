@@ -57,7 +57,7 @@
 - name: Install | Install python pip modules
   check_mode: no
   pip:
-    name: ['dpath']
+    name: ['dpath', 'cryptography']
   tags:
     - install
 
@@ -79,7 +79,7 @@
   with_items:
     - "{{ jenkins_home }}"
     - "{{ jenkins_casc_config_path }}"
-    - "{{ jenkins_home }}/init.groovy.d"
+    - "{{ jenkins_init_d_dir }}"
   when: not ansible_check_mode
   tags:
     - install

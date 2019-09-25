@@ -1,5 +1,5 @@
 ---
-jenkins_version: "2.190"
+jenkins_version: "2.196"
 jenkins_pkg_url: "https://pkg.jenkins.io/redhat"
 jenkins_updates_url: "https://updates.jenkins.io"
 
@@ -8,6 +8,8 @@ jenkins_connection_retries: 120
 jenkins_connection_timeout: 30
 
 jenkins_home: /var/lib/jenkins
+jenkins_init_d_dir: "{{ jenkins_home }}/init.groovy.d"
+
 jenkins_hostname: "{{ ansible_default_ipv4.address }}"
 jenkins_http_port: 8080
 jenkins_https_port: 8443
@@ -17,12 +19,16 @@ jenkins_url: "https://{{ jenkins_hostname }}:{{ jenkins_https_port }}{{ jenkins_
 jenkins_color_theme: null
 
 jenkins_casc_config_path: "{{ jenkins_home }}/jcasc"
-jenkins_casc_user_config_path: "configuration/jcasc"
-jenkins_casc_user_config_files_match: ".*.yml$"
 
-jenkins_email: "CICD Services Jenkins <cicd-services@*****>"
+jenkins_rebuild_war: false
 
-jenkins_keystore_location: "{{ jenkins_home }}/jenkins-server-certs.keytool"
+jenkins_casc_global_config_path: "configuration/global/jcasc"
+jenkins_casc_user_config_path: "configuration/hosts/{{ ansible_hostname }}/jcasc"
+jenkins_casc_config_files_match: ".*.yml$"
+
+jenkins_email: "CICD Services Jenkins <cicd-services@localhost>"
+
+jenkins_keystore_location: "/usr/lib/jenkins/jenkins-server-certs.keytool"
 jenkins_keystore_password: "{{ lookup('password', 'credentials/'+ jenkins_hostname +'/jenkins_keystore_password chars=ascii_letters,digits,hexdigits length=16') }}"
 
 jenkins_java_cmd: /etc/alternatives/java
@@ -34,7 +40,7 @@ jenkins_java_ssl_options: -Djavax.net.ssl.trustStore=/etc/pki/ca-trust/extracted
 jenkins_java_gc_options: "-XX:-UseGCOverheadLimit -XX:+UseConcMarkSweepGC -XX:+ScavengeBeforeFullGC -XX:MaxGCPauseMillis=100 -XX:ParallelGCThreads={{ ansible_processor_vcpus }}"
 jenkins_other_options: "-Dcasc.jenkins.config={{ jenkins_casc_config_path }} -Djenkins.InitReactorRunner.concurrency={{ ansible_processor_vcpus * 8 | int }}"
 jenkins_java_debug: "-Djavax.net.debug=false"
-# -Djava.util.logging.config.file={{ jenkins_home }}/logging.properties
+# -Djava.util.logging.config.file=/usr/lib/jenkins/logging.properties
 jenkins_java_options: "-Djava.awt.headless=true -Djenkins.install.runSetupWizard=false -Dpermissive-script-security.enabled=true -Dserver.use-forward-headers=true"
 
 jenkins_proxy_host: null
@@ -44,106 +50,47 @@ jenkins_proxy_pass: null
 jenkins_proxy_exceptions: "metadata.google.internal,{{ jenkins_hostname }}"
 
 jenkins_plugins: {}
+jenkins_global_plugins: {}
 _jenkins_global_plugins:
-  role-strategy: "2.13"
-  jdk-tool: "1.3"
-  google-oauth-plugin: "0.8"
-  trilead-api: "1.0.5"
-  maven-plugin: "3.4"
-  nested-view: "1.17"
-  job-dsl: "1.76"
-  ldap: "1.20"
-  custom-tools-plugin: "0.7"
-  git-client: "2.8.0"
-  scm-api: "2.6.3"
-  mask-passwords: "2.12.0"
-  build-blocker-plugin: "1.7.3"
-  groovy-postbuild: "2.5"
-  groovy-events-listener-plugin: "1.014"
-  email-ext: "2.66"
-  python: "1.3"
-  build-timeout: "1.19"
-  windows-slaves: "1.4"
-  parameterized-trigger: "2.35.2"
-  repository-connector: "1.2.6"
-  plugin-usage-plugin: "0.4"
-  oauth-credentials: "0.3"
-  configuration-as-code: "1.27"
-  uno-choice: "2.1"
-  workflow-support: "3.3"
-  mailer: "1.24"
-  xunit: "2.3.5"
-  permissive-script-security: "0.5"
-  antisamy-markup-formatter: "1.5"
-  checkmarx: "8.90.4"
-  dtkit-api: "2.1.1-1"
-  badge: "1.8"
-  groovy: "2.2"
-  conditional-buildstep: "1.3.6"
-  workflow-scm-step: "2.9"
-  ws-cleanup: "0.37"
-  build-pipeline-plugin: "1.5.8"
-  token-macro: "2.8"
-  run-condition: "1.2"
-  ssh-agent: "1.17"
-  credentials-binding: "1.20"
-  extended-choice-parameter: "0.78"
-  pipeline-build-step: "2.9"
-  credentials: "2.2.1"
-  greenballs: "1.15"
-  config-file-provider: "3.6.2"
-  simple-theme-plugin: "0.5.1"
-  extra-columns: "1.20"
-  workflow-step-api: "2.20"
-  sonar: "2.9"
-  plain-credentials: "1.5"
-  command-launcher: "1.3"
-  matrix-project: "1.14"
-  resource-disposer: "0.13"
-  jquery: "1.12.4-1"
-  bouncycastle-api: "2.17"
-  progress-bar-column-plugin: "1.0"
-  pam-auth: "1.5.1"
-  javadoc: "1.5"
-  git: "3.12.0"
-  workflow-durable-task-step: "2.33"
-  ssh-credentials: "1.17.1"
-  saml: "1.1.2"
-  cloudbees-folder: "6.9"
-  configuration-as-code-support: "1.18"
-  durable-task: "1.30"
-  gerrit-trigger: "2.30.0"
-  gerrit-code-review: "0.3.3"
-  gerrit-verify-status-reporter: "0.0.3"
-  authorize-project: "1.3.0"
-  workflow-basic-steps: "2.18"
-  copyartifact: "1.42.1"
-  jsch: "0.1.55.1"
-  timestamper: "1.10"
-  rebuild: "1.31"
-  junit: "1.28"
-  structs: "1.20"
-  apache-httpcomponents-client-4-api: "4.5.5-3.0"
-  ant: "1.9"
-  jquery-ui: "1.0.2"
-  configuration-as-code-groovy: "1.1"
-  ssh-slaves: "1.30.1"
-  matrix-auth: "2.4.2"
-  ansicolor: "0.6.2"
-  strict-crumb-issuer: "2.0.1"
-  envinject: "2.2.0"
-  skip-certificate-check: "1.0"
-  display-url-api: "2.3.2"
-  script-security: "1.62"
-  external-monitor-job: "1.7"
-  envinject-api: "1.6"
-  workflow-api: "2.36"
-  build-monitor-plugin: "1.12+build.201809061734"
-  google-compute-engine: "3.4.0"
-  promoted-builds: "3.3"
+  locale: latest
+  job-dsl: latest
+  configuration-as-code: latest
+  configuration-as-code-support: latest
+  configuration-as-code-groovy: latest
+  timestamper: latest
+  ansicolor: latest
+  matrix-auth: latest
+  script-security: latest
+  authorize-project: latest
+  ssh-credentials: latest
+  git: latest
+  matrix-project: latest
+  plain-credentials: latest
+  command-launcher: latest
+  extra-columns: latest
+  simple-theme-plugin: latest
+  config-file-provider: latest
+  credentials: latest
+  ssh-agent: latest
+  run-condition: latest
+  ws-cleanup: latest
+  conditional-buildstep: latest
+  groovy: latest
+  antisamy-markup-formatter: latest
+  permissive-script-security: latest
+  email-ext: latest
+  python: latest
+  mask-passwords: latest
+  git-client: latest
+  nested-view: latest
+  build-user-vars-plugin: latest
+  multiple-scms: latest
+  role-strategy: latest
+  progress-bar-column-plugin: latest
+  skip-certificate-check: latest
 
-jenkins_process_user: cicd_jenkins
-jenkins_process_group: users
+jenkins_process_user: jenkins
+jenkins_process_group: jenkins
 
 jenkins_init_file: /etc/sysconfig/jenkins
 

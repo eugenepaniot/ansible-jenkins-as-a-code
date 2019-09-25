@@ -13,7 +13,7 @@
     "
   register: __color
   when: >
-    'simple-theme-plugin' in jenkins_plugins
+    'simple-theme-plugin' in __jenkins_plugins
   tags:
     - settings
     - plugins
@@ -23,49 +23,50 @@
   set_fact:
     jenkins_color_theme: "{{ jenkins_color_theme | ternary(jenkins_color_theme, __color.stdout) }}"
   when: >
-    'simple-theme-plugin' in jenkins_plugins
+    'simple-theme-plugin' in __jenkins_plugins
   tags:
     - settings
     - plugins
 
-- name: Plugin simple-theme-plugin | Create Jenkins updates directory.
-  file:
-    path: "{{ jenkins_home }}/userContent"
-    state: directory
-    owner: "{{ jenkins_process_user }}"
-    group: "{{ jenkins_process_group }}"
-  when: >
-    not ansible_check_mode and
-    'simple-theme-plugin' in jenkins_plugins
-  tags:
-    - plugins
 
-- name: Plugin simple-theme-plugin | Download current plugin updates from Jenkins update site
-  get_url:
-    url: "https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-{{ jenkins_color_theme }}.css"
-    dest: "{{ jenkins_home }}/userContent/theme.css"
-    owner: "{{ jenkins_process_user }}"
-    group: "{{ jenkins_process_group }}"
-    validate_certs: no
-    use_proxy: yes
-    force: yes
-    mode: 0640
-  register: get_result
-  until: get_result is success
-  retries: "{{ jenkins_connection_retries }}"
-  delay: "{{ jenkins_connection_delay }}"
-  when: >
-    not ansible_check_mode and
-    'simple-theme-plugin' in jenkins_plugins
-  tags:
-    - settings
-    - plugins
+# - name: Plugin simple-theme-plugin | Create Jenkins updates directory.
+#   file:
+#     path: "{{ jenkins_home }}/userContent"
+#     state: directory
+#     owner: "{{ jenkins_process_user }}"
+#     group: "{{ jenkins_process_group }}"
+#   when: >
+#     not ansible_check_mode and
+#     'simple-theme-plugin' in __jenkins_plugins
+#   tags:
+#     - plugins
+
+# - name: Plugin simple-theme-plugin | Download current plugin updates from Jenkins update site
+#   get_url:
+#     url: "https://cdn.rawgit.com/afonsof/jenkins-material-theme/gh-pages/dist/material-{{ jenkins_color_theme }}.css"
+#     dest: "{{ jenkins_home }}/userContent/theme.css"
+#     owner: "{{ jenkins_process_user }}"
+#     group: "{{ jenkins_process_group }}"
+#     validate_certs: no
+#     use_proxy: yes
+#     force: yes
+#     mode: 0640
+#   register: get_result
+#   until: get_result is success
+#   retries: "{{ jenkins_connection_retries }}"
+#   delay: "{{ jenkins_connection_delay }}"
+#   when: >
+#     not ansible_check_mode and
+#     'simple-theme-plugin' in __jenkins_plugins
+#   tags:
+#     - settings
+#     - plugins
 
 - include_tasks: copy-jcasc.yml
   vars:
     script_template: "80-simple-theme"
   when: >
-    'simple-theme-plugin' in jenkins_plugins
+    'simple-theme-plugin' in __jenkins_plugins
   tags:
     - settings
     - plugins

@@ -1,11 +1,19 @@
 ---
 - name: Handler Reload JcasC | Reload Jenkin configuration programatically
   block:
+    - name: Restart Jenkin service
+      no_log: True
+      service: name=jenkins state=restarted
+      when: >
+        (skip_handlers | default("true") == "false")
+
     - set_fact:
         __exec_script_dir: >-
           {%- set dir = lookup('env','WORKSPACE') -%}
           {%- if dir == "" -%}{%- set dir = "/tmp/" + lookup('password', '/dev/null length=6 chars=ascii_letters') -%}{%- endif -%}
           {{ dir }}/execute/
+      when: >
+        (skip_handlers | default("false") == "true")
 
     - name: Handler Reload JcasC | Create execute directory
       file:
@@ -14,6 +22,8 @@
         owner: "{{ jenkins_process_user }}"
         group: "{{ jenkins_process_group }}"
         mode: 0750
+      when: >
+        (skip_handlers | default("false") == "true")
 
     - name: Handler Reload JcasC | Create execute/script.groovy
       blockinfile:
@@ -28,6 +38,7 @@
         mode: 0640
         force: yes
         backup: no
+      when: >
+        (skip_handlers | default("false") == "true")
   when: >
-    not ansible_check_mode or
-    (skip_handlers | default("false") == "true")
+    not ansible_check_mode

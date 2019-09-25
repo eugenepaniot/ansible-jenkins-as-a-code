@@ -10,3 +10,20 @@
 - include_tasks: 02-jcasc/main.yml
   tags:
     - always
+
+
+
+- name: Install | Recursively change ownership of a directory
+  file:
+    path: "{{ item }}"
+    state: directory
+    recurse: yes
+    owner: "{{ jenkins_process_user }}"
+    group: "{{ jenkins_process_group }}"
+  with_items:
+    - /var/cache/jenkins/
+    - /var/log/jenkins/
+    - "{{ jenkins_home }}"
+  tags:
+    - settings
+    - plugins_install
