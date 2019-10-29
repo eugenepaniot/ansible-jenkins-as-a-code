@@ -15,7 +15,7 @@
 - name: JCasC | Include global defined configuration files as jcasc variable in sorted way
   no_log: True
   include_vars:
-    name: "{{ '%04d' | format(index+1000|int) }}__{{ item | replace('/', '_') }}_jcasc"
+    name: "{{ '%04d' | format(index+1000|int) }}__{{ item | replace('/', '_') | replace('.', '_') }}_jcasc"
     file: "{{ jenkins_casc_global_config_path }}/{{ item }}"
   loop: "{{ __jenkins_casc_global_configs | default([]) | sort }}"
   loop_control:
@@ -41,7 +41,7 @@
 - name: JCasC | Include user defined configuration files as jcasc variable in sorted way
   no_log: True
   include_vars:
-    name: "{{ '%04d' | format(index+2000|int) }}__{{ item | replace('/', '_') }}_jcasc"
+    name: "{{ '%04d' | format(index+2000|int) }}__{{ item | replace('/', '_') | replace('.', '_') }}_jcasc"
     file: "{{ jenkins_casc_user_config_path }}/{{ item }}"
   loop: "{{  __jenkins_casc_user_configs | default([]) | sort }}"
   loop_control:
@@ -62,12 +62,12 @@
         merged_var_name: jenkins_configuration
         additional_merge_tree:
           - jenkins/globalNodeProperties
-          # TODO IMPROVEMENT: implement merge by specified key in list of dicts
-          # - jenkins/authorizationStrategy/roleBased/roles/agents
-          # - jenkins/authorizationStrategy/roleBased/roles/global
-          # - jenkins/authorizationStrategy/roleBased/roles/items
+        additional_merge_by_key:
+          - jenkins/authorizationStrategy/roleBased/roles/agents: name
+          - jenkins/authorizationStrategy/roleBased/roles/global: name
+          - jenkins/authorizationStrategy/roleBased/roles/items: name
 
-    - set_fact: # WA for https://github.com/ansible/ansible/issues/24425
+    - set_fact:
         jenkins_configuration: "{{ jenkins_configuration }}"
   tags:
     - settings
@@ -87,12 +87,4 @@
     script_template: "01"
   tags:
     - settings
-    - jcasc
     - plugins
-
-# - fail:
-#     msg: "{{ jenkins_configuration }}"
-#   tags:
-#     - settings
-#     - jcasc
-#     - plugins

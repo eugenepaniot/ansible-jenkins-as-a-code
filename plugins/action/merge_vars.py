@@ -2,6 +2,7 @@
 from ansible.plugins.action import ActionBase
 from ansible.errors import AnsibleError
 from ansible.utils.vars import isidentifier
+import itertools
 
 import dpath
 
@@ -11,12 +12,13 @@ except ImportError:
     from ansible.utils.display import Display
     display = Display()
 
-
 class ActionModule(ActionBase):
     def run(self, tmp=None, task_vars=None):
         suffix_to_merge = self._task.args.get('suffix_to_merge', '')
         merged_var_name = self._task.args.get('merged_var_name', '')
-        additional_merge_tree = self._task.args.get('additional_merge_tree', {})
+        expected_type = self._task.args.get('expected_type', 'dict')
+        additional_merge_tree = self._task.args.get('additional_merge_tree', [])
+        additional_merge_by_key = self._task.args.get('additional_merge_by_key', [])
 
         all_keys = task_vars.keys()
 
@@ -32,9 +34,13 @@ class ActionModule(ActionBase):
 
         merge_vals = [self._templar.template(task_vars[key]) for key in keys]
 
-        merged = {}
-        for val in merge_vals:
-            dpath.util.merge(dst=merged, src=val, flags=dpath.util.MERGE_ADDITIVE)
+        merged = None
+        if expected_type == 'list':
+            merged = list(itertools.chain.from_iterable(merge_vals))
+        else:
+            merged = {}
+            for val in merge_vals:
+                dpath.util.merge(dst=merged, src=val, flags=dpath.util.MERGE_ADDITIVE)
 
         for k in additional_merge_tree:
             try:
@@ -53,6 +59,29 @@ class ActionModule(ActionBase):
                     display.warning("Merge not implemented for followin type {} by path".format(type(r), k))
             except KeyError as e:
                 display.warning("Key doesnt exists: {}".format(e))
+
+        for k in additional_merge_by_key:
+            try:
+                key, merge_by = list(k.items())[0]
+
+                def keyfunc(x):
+                    return x[merge_by]
+
+                m = []
+                data = sorted(dpath.util.get(merged, key), key=keyfunc)
+                for merge_value, group in itertools.groupby(data, keyfunc):
+                    mm = {}
+                    display.v("Merging path {} by key {} and value {}".format(key, merge_by, merge_value))
+                    for g in list(group):
+                        dpath.util.merge(dst=mm, src=g, flags=dpath.util.MERGE_ADDITIVE)
+
+                    m.append(mm)
+
+                if m:
+                    dpath.util.new(merged, key, m)
+
+            except KeyError as e:
+                display.warning("Key {} doesnt exists: in {}".format(e, k))
 
         return {
             'ansible_facts': {merged_var_name: merged},
